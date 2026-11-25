@@ -1,61 +1,132 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const USE_MOCK = !BASE_URL;
+import { ApiError, USE_MOCK, request } from './client';
+import { calcEndTime, fillPlaceholders } from '../utils/notice';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const MOCK_TEMPLATES = [
   {
-    id: 'fire',
-    label: '화재',
-    tone: 'danger',
-    detectedAt: '19:48:05',
-    body: '화재가 발생했습니다. 직원 안내에 따라 가까운 비상구로 침착하게 대피해 주세요.',
-    source: '"불이 났습니다 관객 여러분 비상구로…"',
-    timer: null,
-    preview: {
-      ko: '화재가 발생했습니다\n가까운 비상구로\n침착하게 대피해 주세요',
-      en: 'A fire has broken out.\nPlease evacuate calmly\nthrough the nearest exit.',
-      ja: '火災が発生しました。\n最寄りの非常口へ\n落ち着いて避難してください。',
-      zh: '发生火灾。\n请沿最近的紧急出口\n冷静撤离。',
-    },
+    code: 'FIRE',
+    intent_type: 'FIRE',
+    title: '화재 대피 안내',
+    text_ko: '화재가 발생했습니다. 직원 안내에 따라 가까운 비상구로 침착하게 대피해 주세요.',
+    text_easy: '불이 났어요\n비상구로 대피하세요',
+    text_en: 'A fire has broken out.\nPlease evacuate through the nearest exit.',
+    text_zh: '发生火灾。\n请从最近的紧急出口撤离。',
+    text_ja: '火災が発生しました。\n最寄りの非常口へ避難してください。',
+    pictogram: 'fire',
+    widget: 'map',
+    default_minutes: null,
+    trigger_haptic: true,
+    is_default: true,
+    is_active: true,
+    sort_order: 10,
   },
   {
-    id: 'general',
-    label: '일반 안내',
-    tone: 'normal',
-    detectedAt: '19:48:05',
-    body: '15분 휴식 후 2부가 시작됩니다. 20:05까지 객석으로 돌아와 주세요.',
-    source: '"잠시 쉬었다가 2부 시작하겠습니다…"',
-    timer: '15:00',
-    preview: {
-      ko: '15분 쉬는 시간\n2부 20:05 시작',
-      en: '15-minute break\nAct 2 starts at 20:05',
-      ja: '15分休憩\n第2部は20:05開始',
-      zh: '休息15分钟\n第二部20:05开始',
-    },
+    code: 'INTERMISSION',
+    intent_type: 'INTERMISSION',
+    title: '인터미션 안내',
+    text_ko: '지금부터 {minutes}분간 휴식입니다. 2부는 {end_time}에 시작합니다.',
+    text_easy: '{minutes}분 휴식 · 2부 {end_time} 시작',
+    text_en: '{minutes}-min break · Act 2 starts {end_time}',
+    text_zh: '休息{minutes}分钟 · 第二幕 {end_time} 开始',
+    text_ja: '{minutes}分休憩 · 第2部 {end_time} 開始',
+    pictogram: 'clock',
+    widget: 'timer',
+    default_minutes: 15,
+    trigger_haptic: false,
+    is_default: false,
+    is_active: true,
+    sort_order: 50,
   },
 ];
 
-export async function fetchRecommendedTemplates() {
+let mockSeq = 100;
+let mockActive = null;
+
+export async function fetchTemplates() {
   if (USE_MOCK) {
-    await delay(200);
+    await delay(150);
     return MOCK_TEMPLATES;
   }
-  const res = await fetch(`${BASE_URL}/notices/templates`);
-  if (!res.ok) throw new Error('추천 템플릿을 불러오지 못했습니다.');
-  return res.json();
+  const data = await request('/templates');
+  return Array.isArray(data) ? data : data.templates ?? [];
 }
 
 export async function sendNotice(payload) {
   if (USE_MOCK) {
-    await delay(400);
-    return { ok: true, ...payload };
+    await delay(300);
+    if (mockActive?.intent_type === 'FIRE') {
+      throw new ApiError(
+        409,
+        'fire_active',
+        '화재 대피 안내가 송출 중입니다. [종료] 후에 보낼 수 있습니다.',
+      );
+    }
+    const tpl = MOCK_TEMPLATES.find((t) => t.code === payload.template_code);
+    if (!tpl) throw new ApiError(404, 'not_found', '템플릿을 찾을 수 없습니다.');
+
+    const now = new Date();
+    const minutes = payload.minutes ?? tpl.default_minutes ?? null;
+    const endTime = minutes ? calcEndTime(minutes, now) : '';
+    const fill = (s) => fillPlaceholders(s, { minutes: minutes ?? '', endTime });
+
+    mockSeq += 1;
+    mockActive = {
+      id: mockSeq,
+      template_code: tpl.code,
+      intent_type: tpl.intent_type,
+      title: null,
+      text_ko: fill(tpl.text_ko),
+      text_easy: fill(tpl.text_easy),
+      text_en: fill(tpl.text_en),
+      text_zh: fill(tpl.text_zh),
+      text_ja: fill(tpl.text_ja),
+      pictogram: tpl.pictogram,
+      widget: tpl.widget,
+      minutes,
+      expires_at: minutes ? new Date(now.getTime() + minutes * 60000).toISOString() : null,
+      direction: null,
+      trigger_haptic: tpl.trigger_haptic,
+      operator_name: null,
+      status: 'ACTIVE',
+      revision: 0,
+      created_at: now.toISOString(),
+      ended_at: null,
+    };
+    return mockActive;
   }
-  const res = await fetch(`${BASE_URL}/notices`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error('공지 송출에 실패했습니다.');
-  return res.json();
+  return request('/notices', { method: 'POST', body: payload });
+}
+
+export async function updateNotice(noticeId, payload) {
+  if (USE_MOCK) {
+    await delay(300);
+    mockActive = { ...mockActive, ...payload, revision: (mockActive?.revision ?? 0) + 1 };
+    return mockActive;
+  }
+  return request(`/notices/${noticeId}`, { method: 'PATCH', body: payload });
+}
+
+export async function endNotice(noticeId) {
+  if (USE_MOCK) {
+    await delay(200);
+    const ended = { ...mockActive, status: 'ENDED', ended_at: new Date().toISOString() };
+    mockActive = null;
+    return ended;
+  }
+  return request(`/notices/${noticeId}/end`, { method: 'POST' });
+}
+
+export async function fetchActiveNotice() {
+  if (USE_MOCK) {
+    await delay(100);
+    return mockActive;
+  }
+  try {
+    const data = await request('/notices/active');
+    return data && data.id ? data : null;
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
 }

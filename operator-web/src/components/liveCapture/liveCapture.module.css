@@ -78,17 +78,6 @@
   font-weight: 600;
   color: var(--gray-9);
 }
-
-.off {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 72px;
-  border-radius: 8px;
-  background-color: var(--gray-2);
-  font-size: 12px;
-  color: var(--gray-7);
-}
 .logList {
   margin: 0;
   padding: 0 4px 0 0;
@@ -110,4 +99,13 @@
 }
 .logText {
   color: var(--gray-10);
+}
+.logHighlight {
+  margin: 0 -4px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background-color: #fff6cc;
+}
+.logUnclear {
+  color: var(--gray-6);
 }

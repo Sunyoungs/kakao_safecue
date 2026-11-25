@@ -1,13 +1,6 @@
 import styles from './button.module.css';
 
-function Button({
-  variant = 'primary',
-  size = 'md',
-  fullWidth = false,
-  className = '',
-  children,
-  ...rest
-}) {
+function Button({ variant = 'primary', size = 'md', fullWidth = false, className = '', children, ...rest }) {
   const classNames = [
     styles.button,
     styles[variant],

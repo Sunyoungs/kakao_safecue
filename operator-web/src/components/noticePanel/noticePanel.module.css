@@ -36,7 +36,6 @@
   height: 16px;
   display: block;
 }
-
 .body {
   flex: 1;
   min-height: 0;
@@ -61,7 +60,6 @@
   font-size: 13px;
   color: var(--gray-7);
 }
-
 .sectionHead {
   display: flex;
   align-items: center;
@@ -85,7 +83,6 @@
   height: 14px;
   display: block;
 }
-
 .cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -144,7 +141,6 @@
   font-size: 11px;
   color: var(--gray-8);
 }
-
 .preview {
   position: relative;
   display: grid;
@@ -209,10 +205,9 @@
   background-color: var(--gray-10);
   border-color: var(--gray-9);
 }
-
 .timeGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
 .field {
@@ -243,9 +238,13 @@
   font-size: 12px;
   color: var(--secondary-7);
 }
-
 .footer {
   flex-shrink: 0;
   padding: 14px 20px;
   border-top: 1px solid var(--gray-3);
+}
+.cardExpire {
+  margin: 0;
+  font-size: 11px;
+  color: var(--gray-7);
 }

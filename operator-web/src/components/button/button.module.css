@@ -16,7 +16,6 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
-
 .sm {
   height: 28px;
   padding: 0 10px;
@@ -36,7 +35,6 @@
 .full {
   width: 100%;
 }
-
 .primary {
   background-color: var(--primary-9);
   color: var(--gray-1);
@@ -53,4 +51,11 @@
 .danger {
   background-color: var(--secondary-7);
   color: var(--gray-1);
+}
+.primary:disabled,
+.outline:disabled {
+  opacity: 1;
+  background-color: var(--gray-3);
+  border-color: var(--gray-3);
+  color: var(--gray-6);
 }

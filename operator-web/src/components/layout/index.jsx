@@ -4,8 +4,6 @@ import menuList from '../../assets/left_list.svg';
 import menuCreate from '../../assets/left_add.svg';
 import menuPlay from '../../assets/left_start.svg';
 import menuApprove from '../../assets/left_check.svg';
-import micIcon from '../../assets/mic.svg';
-import chevronDown from '../../assets/chevron_down.svg';
 import styles from './layout.module.css';
 
 const MENUS = [
@@ -16,7 +14,7 @@ const MENUS = [
   { key: 'approve', label: '공연 디바이스 승인', icon: menuApprove },
 ];
 
-function Layout({ title, date, activeMenu = 'play', children }) {
+function Layout({ title, date, activeMenu = 'play', headerRight, banner, children }) {
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
@@ -39,27 +37,13 @@ function Layout({ title, date, activeMenu = 'play', children }) {
           <h1 className={styles.title}>
             {title} <span className={styles.date}>· {date}</span>
           </h1>
-
-          <div className={styles.status}>
-            <span className={styles.statusItem}>
-              <i className={styles.dot} />
-              서버 연결됨
-            </span>
-            <span className={styles.statusItem}>
-              <i className={styles.dot} />
-              마이크 연결됨
-            </span>
-            <div className={styles.device}>
-              <span className={styles.deviceLeft}>
-                <img src={micIcon} alt="" className={styles.deviceIcon} />
-                기본 입력 장치 (USB Audio)
-              </span>
-              <img src={chevronDown} alt="" className={styles.deviceIcon} />
-            </div>
-          </div>
+          {headerRight}
         </header>
 
-        <div className={styles.body}>{children}</div>
+        <div className={styles.body}>
+          {children}
+          {banner && <div className={styles.banner}>{banner}</div>}
+        </div>
       </div>
     </div>
   );

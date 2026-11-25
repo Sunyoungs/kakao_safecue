@@ -1,69 +1,84 @@
 import { useEffect, useMemo, useState } from 'react';
 import Button from '../button';
+import EmptyBox from '../emptyBox';
 import closeIcon from '../../assets/notice_close.svg';
 import warningIcon from '../../assets/warning.svg';
-import stopwatchIcon from '../../assets/test_stopwatch.svg';
-import { fetchRecommendedTemplates, sendNotice } from '../../api/noticeApi';
+import useNow from '../../hooks/useNow';
+import { sendNotice } from '../../api/noticeApi';
+import {
+  INTENT_LABELS,
+  calcEndTime,
+  fillPlaceholders,
+  formatKst,
+  minutesLeft,
+} from '../../utils/notice';
+import { getPictogram } from '../../utils/pictogram';
 import styles from './noticePanel.module.css';
 
 const LANG_TABS = [
-  { code: 'ko', label: '한국어 쉬운 글' },
-  { code: 'en', label: 'English' },
-  { code: 'ja', label: '日本語' },
-  { code: 'zh', label: '中文' },
+  { code: 'ko', label: '한국어 쉬운 글', key: 'text_easy' },
+  { code: 'en', label: 'English', key: 'text_en' },
+  { code: 'ja', label: '日本語', key: 'text_ja' },
+  { code: 'zh', label: '中文', key: 'text_zh' },
 ];
 
-function diffMinutes(start, end) {
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
-  if ([sh, sm, eh, em].some(Number.isNaN)) return null;
-  let diff = eh * 60 + em - (sh * 60 + sm);
-  if (diff < 0) diff += 24 * 60;
-  return diff;
-}
+const isEmergency = (t) => t.intent_type === 'FIRE' || t.trigger_haptic;
 
-function NoticePanel({ onClose }) {
+function NoticePanel({ suggestions = [], transcripts = [], onSent, onClose }) {
   const [mode, setMode] = useState('ai'); // 'ai' | 'manual'
-  const [templates, setTemplates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [lang, setLang] = useState('ko');
-  const [startTime, setStartTime] = useState('19:50');
-  const [endTime, setEndTime] = useState('20:05');
+  const [minutesInput, setMinutesInput] = useState({}); 
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState('');
+  const now = useNow(15000);
 
   useEffect(() => {
-    let cancelled = false;
-    fetchRecommendedTemplates()
-      .then((data) => {
-        if (cancelled) return;
-        setTemplates(data);
-        if (data.length > 0) setSelectedId(data[0].id);
-      })
-      .catch((e) => !cancelled && setError(e.message));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (suggestions.length === 0) {
+      setSelectedId(null);
+    } else if (!suggestions.some((s) => s.suggestion_id === selectedId)) {
+      setSelectedId(suggestions[0].suggestion_id);
+    }
+  }, [suggestions, selectedId]);
 
-  const selected = templates.find((t) => t.id === selectedId) || null;
-  const hasEmergency = templates.some((t) => t.tone === 'danger');
+  const selected = suggestions.find((s) => s.suggestion_id === selectedId) || null;
+  const template = selected?.template ?? null;
+  const isTimer = template?.widget === 'timer';
+  const hasEmergency = suggestions.some((s) => isEmergency(s.template));
 
-  const totalLabel = useMemo(() => {
-    const minutes = diffMinutes(startTime, endTime);
-    return minutes === null ? '-' : `${minutes}분`;
-  }, [startTime, endTime]);
+  const minutesValue = selected
+    ? minutesInput[selected.suggestion_id] ?? String(template.default_minutes ?? '')
+    : '';
+  const minutesNum = Number(minutesValue);
+  const validMinutes = Number.isInteger(minutesNum) && minutesNum > 0;
+  const endTime = isTimer && validMinutes ? calcEndTime(minutesNum, new Date(now)) : '';
+
+  const activeTab = LANG_TABS.find((t) => t.code === lang);
+  const previewText = template
+    ? fillPlaceholders(template[activeTab.key], {
+        minutes: isTimer && validMinutes ? String(minutesNum) : '',
+        endTime,
+      }) || '(번역이 없습니다)'
+    : '';
+
+  function cardText(t) {
+    const m = t.default_minutes;
+    return fillPlaceholders(t.text_ko, {
+      minutes: m ? String(m) : '',
+      endTime: m ? calcEndTime(m, new Date(now)) : '',
+    });
+  }
 
   async function handleSend() {
-    if (!selected) return;
+    if (!selected || (isTimer && !validMinutes)) return;
     setIsSending(true);
     setError('');
     try {
-      await sendNotice({
-        templateId: selected.id,
-        startTime,
-        endTime,
+      const notice = await sendNotice({
+        template_code: template.code,
+        ...(isTimer && { minutes: minutesNum }),
       });
+      onSent(notice, selected.suggestion_id);
       onClose();
     } catch (e) {
       setError(e.message);
@@ -83,18 +98,10 @@ function NoticePanel({ onClose }) {
 
       <div className={styles.body}>
         <div className={styles.modeTabs}>
-          <Button
-            variant={mode === 'ai' ? 'dark' : 'outline'}
-            size="sm"
-            onClick={() => setMode('ai')}
-          >
+          <Button variant={mode === 'ai' ? 'dark' : 'outline'} size="sm" onClick={() => setMode('ai')}>
             AI 자동 송출
           </Button>
-          <Button
-            variant={mode === 'manual' ? 'dark' : 'outline'}
-            size="sm"
-            onClick={() => setMode('manual')}
-          >
+          <Button variant={mode === 'manual' ? 'dark' : 'outline'} size="sm" onClick={() => setMode('manual')}>
             수동 송출
           </Button>
         </div>
@@ -113,89 +120,113 @@ function NoticePanel({ onClose }) {
               )}
             </div>
 
-            <div className={styles.cards}>
-              {templates.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={`${styles.card} ${t.id === selectedId ? styles.cardSelected : ''}`}
-                  onClick={() => setSelectedId(t.id)}
-                >
-                  <div className={styles.cardTop}>
-                    <span
-                      className={`${styles.cardTag} ${
-                        t.tone === 'danger' ? styles.tagDanger : styles.tagNormal
-                      }`}
+            {suggestions.length === 0 ? (
+              <EmptyBox
+                minHeight={110}
+                title="AI가 현장 음성을 듣고 있어요"
+                description="공지가 필요한 상황이 감지되면 여기에 추천 카드가 나타나요"
+              />
+            ) : (
+              <>
+                <div className={styles.cards}>
+                  {suggestions.map((s) => {
+                    const t = s.template;
+                    const source = transcripts.find((x) => x.id === s.source_transcript_id);
+                    return (
+                      <button
+                        key={s.suggestion_id}
+                        type="button"
+                        className={`${styles.card} ${
+                          s.suggestion_id === selectedId ? styles.cardSelected : ''
+                        }`}
+                        onClick={() => setSelectedId(s.suggestion_id)}
+                      >
+                        <div className={styles.cardTop}>
+                          <span
+                            className={`${styles.cardTag} ${
+                              isEmergency(t) ? styles.tagDanger : styles.tagNormal
+                            }`}
+                          >
+                            {INTENT_LABELS[t.intent_type] ?? t.title}
+                          </span>
+                          <span className={styles.cardTime}>
+                            {formatKst(s.detected_at, true)} 감지
+                          </span>
+                        </div>
+                        <p className={styles.cardBody}>{cardText(t)}</p>
+                        {source && <p className={styles.cardSource}>"{source.text}"</p>}
+                        <p className={styles.cardExpire}>
+                          {minutesLeft(s.expires_at, now)}분 후 사라짐
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <h3 className={styles.sectionTitle}>송출 미리보기 및 수정</h3>
+
+                <div className={styles.langTabs}>
+                  {LANG_TABS.map((tab) => (
+                    <Button
+                      key={tab.code}
+                      variant={lang === tab.code ? 'dark' : 'outline'}
+                      size="sm"
+                      onClick={() => setLang(tab.code)}
                     >
-                      {t.label}
-                    </span>
-                    <span className={styles.cardTime}>{t.detectedAt} 감지</span>
+                      {tab.label}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className={styles.preview}>
+                  <div className={styles.previewLeft}>
+                    <img
+                      src={getPictogram(template.pictogram, template.widget)}
+                      alt=""
+                      className={styles.previewIcon}
+                    />
+                    {isTimer && (
+                      <div className={styles.timerBox}>
+                        <strong>
+                          {validMinutes ? `${String(minutesNum).padStart(2, '0')}:00` : '--:--'}
+                        </strong>
+                        <span>남음</span>
+                      </div>
+                    )}
                   </div>
-                  <p className={styles.cardBody}>{t.body}</p>
-                  <p className={styles.cardSource}>{t.source}</p>
-                </button>
-              ))}
-            </div>
+                  <div className={styles.previewRight}>
+                    <p className={styles.previewText}>{previewText}</p>
+                    <Button variant="dark" size="sm" className={styles.editBtn}>
+                      텍스트 수정
+                    </Button>
+                  </div>
+                </div>
 
-            <h3 className={styles.sectionTitle}>송출 미리보기 및 수정</h3>
-
-            <div className={styles.langTabs}>
-              {LANG_TABS.map((tab) => (
-                <Button
-                  key={tab.code}
-                  variant={lang === tab.code ? 'dark' : 'outline'}
-                  size="sm"
-                  onClick={() => setLang(tab.code)}
-                >
-                  {tab.label}
-                </Button>
-              ))}
-            </div>
-
-            <div className={styles.preview}>
-              <div className={styles.previewLeft}>
-                <img
-                  src={selected?.timer ? stopwatchIcon : warningIcon}
-                  alt=""
-                  className={styles.previewIcon}
-                />
-                {selected?.timer && (
-                  <div className={styles.timerBox}>
-                    <strong>{selected.timer}</strong>
-                    <span>남음</span>
+                {isTimer && (
+                  <div className={styles.timeGrid}>
+                    <label className={styles.field}>
+                      <span>시간 (분)</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="180"
+                        value={minutesValue}
+                        onChange={(e) =>
+                          setMinutesInput((prev) => ({
+                            ...prev,
+                            [selected.suggestion_id]: e.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                    <label className={styles.field}>
+                      <span>끝나는 시각</span>
+                      <input type="text" value={endTime || '-'} disabled readOnly />
+                    </label>
                   </div>
                 )}
-              </div>
-              <div className={styles.previewRight}>
-                <p className={styles.previewText}>{selected ? selected.preview[lang] : ''}</p>
-                <Button variant="dark" size="sm" className={styles.editBtn}>
-                  텍스트 수정
-                </Button>
-              </div>
-            </div>
-
-            <div className={styles.timeGrid}>
-              <label className={styles.field}>
-                <span>시작 시간</span>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-              </label>
-              <label className={styles.field}>
-                <span>종료 시간</span>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-              </label>
-              <label className={styles.field}>
-                <span>총 시간</span>
-                <input type="text" value={totalLabel} disabled readOnly />
-              </label>
-            </div>
+              </>
+            )}
 
             {error && <p className={styles.error}>{error}</p>}
           </>
@@ -207,7 +238,7 @@ function NoticePanel({ onClose }) {
           variant="primary"
           size="lg"
           fullWidth
-          disabled={mode === 'manual' || !selected || isSending}
+          disabled={mode === 'manual' || !selected || (isTimer && !validMinutes) || isSending}
           onClick={handleSend}
         >
           {isSending ? '송출 중...' : '송출'}
