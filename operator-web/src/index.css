@@ -42,16 +42,21 @@
   --desktop-container: 1376px;
   --desktop-padding-x: 32px;
 }
-body {
+body, #root {
   margin: 0;
-  padding: 0px;
+  padding: 0;
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
+}
+body {
   font-family: var(--font-family);
-  background-color: var(--gray-1);
+  background-color: var(--gray-2);
+  color: var(--gray-11);
 }
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-5) transparent;
 }
 .desktop-container {
   width: 100%;

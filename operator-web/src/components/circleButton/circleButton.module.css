@@ -1,0 +1,76 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.button {
+  width: 64px;
+  height: 64px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+.button:hover {
+  filter: brightness(0.95);
+}
+.button:active {
+  transform: scale(0.96);
+}
+.light {
+  background-color: var(--primary-3);
+  color: var(--primary-9);
+}
+.dark {
+  background-color: var(--primary-9);
+  color: var(--gray-1);
+}
+.danger {
+  background-color: var(--secondary-7);
+  color: var(--gray-1);
+}
+.active {
+  box-shadow: 0 0 0 3px var(--primary-4);
+}
+.icon {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+.innerText {
+  font-size: 16px;
+  font-weight: 700;
+}
+.label {
+  font-size: 12px;
+  color: var(--gray-8);
+}
+.bareButton {
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+.bareButton:hover {
+  filter: brightness(0.95);
+}
+.bareButton:active {
+  transform: scale(0.96);
+}
+.bareActive {
+  box-shadow: 0 0 0 3px var(--secondary-3);
+}
+.bareIcon {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
