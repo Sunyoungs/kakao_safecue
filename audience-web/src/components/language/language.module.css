@@ -1,0 +1,75 @@
+.wrapper {
+  position: relative;
+  display: inline-block;
+  z-index: 20;
+}
+.triggerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--gray-9);
+  background-color: var(--gray-11);
+  color: var(--gray-2);
+  font-size: 14px;
+  font-weight: 500;
+}
+.chevron {
+  width: 14px;
+  height: 14px;
+  display: block;
+  transition: transform 0.15s ease;
+}
+.chevronOpen {
+  transform: rotate(180deg);
+}
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 140px;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none; 
+  background-color: var(--gray-11);
+  border: 1px solid var(--gray-9);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  z-index: 30;
+}
+.dropdown li {
+  margin: 0;
+  padding: 0;
+}
+.optionBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 11px 16px;
+  border: none;
+  background: transparent;
+  color: var(--gray-3);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+.optionBtn:hover {
+  background-color: var(--gray-10);
+}
+.selected {
+  background-color: #363948;
+  color: var(--gray-1);
+}
+.checkIcon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex-shrink: 0;
+  color: var(--primary-5);
+}

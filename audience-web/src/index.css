@@ -38,16 +38,26 @@
   --gray-10: #31333F;
   --gray-11: #1B1C23;  
   --font-family: 'Pretendard', sans-serif;
-  --mobile-width: 360px;
-  --mobile-height: 640px;
+  --mobile-width: 640px;
+  --mobile-height: 360px;
 }
 body {
   margin: 0;
-  padding: 0px;
+  padding: 0;
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
   font-family: var(--font-family);
-  background-color: var(--gray-2);
+  color: var(--gray-1);
+  background-color: #000000;
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+#root {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
 }
 * {
   box-sizing: border-box;
@@ -58,8 +68,5 @@ a {
 }
 button {
   cursor: pointer;
-  font-family: var(--font-family);
-}
-input {
   font-family: var(--font-family);
 }
